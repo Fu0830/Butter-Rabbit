@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>黄油兔饼家族 · 家族树</title>
+<meta name="theme-color" content="#f3f6fb">
+<meta name="description" content="家族模拟器风格家谱页：世代家谱树、配偶卡片、个人信息面板与缩放拖拽。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A0%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+<style>
+/* ============ 基础 ============ */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#dfe4ec;
+  font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  color:#3b4350;}
+body{display:flex;align-items:center;justify-content:center}
+button{font-family:inherit;border:0;background:none;padding:0;cursor:pointer;color:inherit}
+img{-webkit-user-drag:none;user-select:none}
+
+/* ============ 手机框 ============ */
+.device{position:relative;width:100%;height:100dvh;max-width:440px;max-height:940px;
+  background:#fbfbfc;display:flex;flex-direction:column;overflow:hidden;isolation:isolate}
+@media (min-width:520px){
+  body{background:
+    radial-gradient(1100px 700px at 50% 0%,#eef3fb 0%,#dfe5ee 60%,#d7dde8 100%);}
+  .device{border-radius:34px;border:7px solid #16171b;
+    box-shadow:0 40px 90px -20px rgba(24,32,48,.55),0 0 0 1px rgba(255,255,255,.5);
+    height:min(92vh,900px)}
+}
+
+/* ============ HUD ============ */
+.hud{position:relative;z-index:5;flex:none;background:linear-gradient(180deg,#f6f9ff 0%,#eef3fb 62%,#f3f5f9 100%);
+  border-bottom:2px solid #111;overflow:hidden}
+.hud::after{content:"";position:absolute;left:0;right:0;bottom:0;height:10px;
+  background:linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,0))}
+
+.stats{position:relative;display:flex;align-items:center;justify-content:space-between;gap:4px;
+  padding:30px 6px 6px;z-index:2}
+.stats::before{content:"";position:absolute;left:-6px;right:-6px;top:calc(50% + 2px);height:2px;
+  background:#111;z-index:-1}
+.stat{position:relative;display:flex;align-items:center;gap:2px;min-width:0}
+.pill{position:relative;display:flex;align-items:center;justify-content:center;
+  height:30px;border-radius:15px;padding:0 12px;
+  background:rgba(214,230,250,.82);border:1px solid rgba(255,255,255,.95);
+  box-shadow:0 1px 3px rgba(70,110,160,.18) inset,0 1px 2px rgba(60,90,130,.12);
+  backdrop-filter:blur(2px)}
+.pill .val{font-weight:800;font-size:17px;letter-spacing:.2px;white-space:nowrap}
+.val.pink{color:#f0366e;text-shadow:0 1px 0 #fff,0 0 6px rgba(255,255,255,.7)}
+.val.money{color:#1c7a3a;text-shadow:0 1px 0 #fff}
+.val.date{color:#33445e;font-size:15px}
+.badge-ic{position:absolute;left:-6px;top:50%;transform:translateY(-50%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.18))}
+.rate{position:absolute;left:50%;transform:translateX(-50%);top:-20px;font-size:14px;font-weight:800;
+  color:#1f8f2a;white-space:nowrap;text-shadow:0 1px 0 #fff}
+.gain{font-weight:800;font-size:13px;letter-spacing:.2px}
+.gain.pos{color:#1f8f2a}
+.gain.neg{color:#ef5470}
+.gain.nodata{color:#a8a8b0}
+
+/* ============ 标题栏 ============ */
+.toolbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px 16px}
+.circle-btn{flex:none;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 6px rgba(30,60,110,.22),inset 0 1px 2px rgba(255,255,255,.55);transition:transform .12s}
+.circle-btn:active{transform:scale(.94)}
+.gear{background:radial-gradient(circle at 34% 26%,#63b4f8,#2b8ae8 68%,#1e73ce)}
+.play{background:radial-gradient(circle at 34% 26%,#ff8794,#f2445b 66%,#dc2c45)}
+.title-pill{display:flex;align-items:center;gap:8px;height:52px;padding:0 24px;border-radius:30px;
+  background:#fff;border:3px solid #2f7fd0;box-shadow:0 3px 8px rgba(47,127,208,.18);
+  transition:transform .12s}
+.title-pill:active{transform:scale(.97)}
+.family-name{font-size:25px;font-weight:700;color:#2f7fd0;letter-spacing:1px;line-height:1;white-space:nowrap}
+
+/* ============ 家谱画布 ============ */
+.stage{position:relative;flex:1;min-height:0;overflow:hidden;background:
+  radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#fafbfd 45%,#f6f7fa 100%);
+  touch-action:none;cursor:grab}
+.stage.dragging{cursor:grabbing}
+.world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.links path{stroke:#141414;stroke-width:3;fill:none;stroke-linecap:square}
+
+/* 卡片 */
+.couple{position:absolute;display:flex;justify-content:center;width:228px;padding:4px 0 14px;border-radius:26px;
+  background:rgba(240,240,244,.95);border:1px solid #e2e2e9;box-shadow:0 1px 0 rgba(255,255,255,.8) inset}
+.couple.single{width:132px;padding:4px 0 14px}
+.card{position:relative;width:112px;display:flex;flex-direction:column;align-items:center;cursor:pointer;
+  transition:transform .16s cubic-bezier(.2,.9,.3,1.3)}
+.card:hover{transform:translateY(-3px)}
+.card:active{transform:scale(.96)}
+.card + .card{margin-left:-14px}
+
+.tag{position:absolute;top:-3px;left:50%;transform:translateX(-50%);z-index:6;
+  max-width:112px;padding:4px 11px;border-radius:12px;font-size:14px;line-height:1.25;font-weight:500;
+  color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.35);
+  background:rgba(150,150,158,.92);box-shadow:0 1px 3px rgba(0,0,0,.18) inset,0 1px 2px rgba(0,0,0,.12)}
+.tag.m{background:linear-gradient(180deg,#3f9bea,#2b7fd2)}
+.tag.f{background:linear-gradient(180deg,#f2687f,#e23a5c)}
+.tag.p{background:linear-gradient(180deg,#f4728a,#eb4260)}
+
+.avatar-wrap{position:relative;width:108px;height:108px;border-radius:50%;padding:3px;
+  background:#fff;border:5px solid #c9c9d0;box-shadow:0 2px 6px rgba(60,70,90,.16);z-index:2}
+.avatar-wrap.m{border-color:#3f9bea}
+.avatar-wrap.f{border-color:#ef5470}
+.avatar-wrap.p{border-color:#ef5470}
+.avatar-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#d9d9df;position:relative}
+.avatar-inner svg{display:block;width:100%;height:100%}
+
+.age-row{position:relative;z-index:5;margin-top:4px;display:flex;align-items:center;gap:0;
+  height:22px;padding:0 4px;border-radius:11px;background:#fff;box-shadow:0 1px 3px rgba(50,60,80,.18);
+  transform:translateY(-12px)}
+.age-row b{font-size:13px;color:#6b6b73;font-weight:700;padding:0 5px}
+.age-row .sep{width:1px;height:10px;background:#e2e2e8}
+.age-row .g{font-size:12px;font-weight:700;padding:0 5px;white-space:nowrap}
+
+/* 画布控件 */
+.zoombar{position:absolute;left:6px;bottom:28px;z-index:6;display:flex;flex-direction:column;align-items:center;gap:12px}
+.track{position:relative;width:10px;height:180px;border-radius:6px;background:linear-gradient(180deg,#c6c6cc,#d8d8de);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.22),0 1px 0 rgba(255,255,255,.7)}
+.knob{position:absolute;left:50%;transform:translate(-50%,50%);width:28px;height:28px;border-radius:50%;
+  background:#fff;border:2px solid #cfd3da;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;font-weight:700;color:#7d8797;box-shadow:0 2px 6px rgba(40,60,90,.22);cursor:pointer}
+.home-btn{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.86);box-shadow:0 2px 8px rgba(50,70,100,.18);border:1px solid #e3e6ec}
+.home-btn:active{transform:scale(.94)}
+
+/* ============ 个人信息弹窗 ============ */
+.overlay{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+  background:rgba(18,22,30,.58);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:16px}
+.overlay.show{display:flex;animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{position:relative;width:100%;max-width:384px;max-height:100%;overflow:auto;
+  background:linear-gradient(180deg,#3f9bf5 0%,#1f7fe8 100%);border-radius:26px;
+  box-shadow:0 24px 60px -12px rgba(0,20,60,.55);border:3px solid rgba(255,255,255,.35);
+  animation:pop .24s cubic-bezier(.2,.9,.3,1.2);scrollbar-width:none}
+.sheet::-webkit-scrollbar{display:none}
+@keyframes pop{from{transform:scale(.92) translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.sheet-head{position:relative;height:64px;display:flex;align-items:center;justify-content:center;flex:none}
+.sheet-head h2{margin:0;font-size:27px;letter-spacing:4px;color:#fff;font-weight:700;
+  text-shadow:0 2px 0 rgba(0,60,140,.35),0 0 12px rgba(255,255,255,.35)}
+.sheet-close{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:40px;height:40px;
+  display:flex;align-items:center;justify-content:center;border-radius:50%}
+.sheet-close:active{background:rgba(255,255,255,.18)}
+.sheet-body{background:#fff;border-radius:20px;margin:0 12px 12px;padding:16px 14px 14px}
+
+.profile{display:flex;flex-direction:column;align-items:center;gap:6px}
+.p-avatar{width:106px;height:106px;border-radius:50%;padding:4px;background:#fff;
+  border:8px solid #ef5470;box-shadow:0 4px 10px rgba(200,60,90,.25)}
+.p-avatar.m{border-color:#ef5470}
+.p-avatar-inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:#d9d9df}
+.p-name{display:flex;align-items:center;gap:5px;font-size:18px;font-weight:700;color:#2f86dd;letter-spacing:.5px}
+.p-name .sym{font-size:19px;color:#ef5470;line-height:1}
+.p-name .sym.m{color:#ef5470}
+.p-age{font-size:15px;font-weight:700;color:#2f86dd;margin-top:-2px}
+
+.top-grid{display:grid;grid-template-columns:106px 1fr;gap:12px;align-items:start}
+.stats-list{display:flex;flex-direction:column;gap:8px;padding-top:1px}
+.stat-row{display:grid;grid-template-columns:20px 1fr 30px;gap:6px;align-items:end}
+.stat-row .ic{font-size:15px;line-height:1;text-align:center;align-self:center;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
+.stat-label{font-size:12px;font-weight:700;color:#2f86dd;line-height:1.15;margin-bottom:3px}
+.st-slider{-webkit-appearance:none;appearance:none;display:block;width:100%;height:16px;margin:0;border-radius:9px;
+  background:linear-gradient(90deg,var(--c) 0 var(--p),#cdcdd3 var(--p) 100%);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.12);outline:none;cursor:pointer;touch-action:pan-x}
+.st-slider::-webkit-slider-runnable-track{height:16px;border-radius:9px;background:transparent}
+.st-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-2px;border-radius:50%;
+  background:radial-gradient(circle at 34% 28%,#fff 0%,#f6f9ff 55%,#dde6f3 100%);
+  border:2.5px solid var(--c);box-shadow:0 2px 5px rgba(20,40,70,.28)}
+.st-slider::-moz-range-track{height:16px;border-radius:9px;background:transparent}
+.st-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2.5px solid var(--c);box-shadow:0 2px 5px rgba(20,40,70,.28)}
+.st-slider:focus-visible{box-shadow:0 0 0 3px rgba(63,155,245,.35),inset 0 1px 2px rgba(0,0,0,.12)}
+.stat-val{font:800 13px/1.1 'DIN Alternate','PingFang SC',sans-serif;color:#2f86dd;text-align:right;align-self:end;padding-bottom:3px}
+.stat-hint{font-size:10.5px;color:#93a4ba;text-align:right;margin-top:-2px}
+.bar{position:relative;height:15px;border-radius:8px;background:#cdcdd3;box-shadow:inset 0 1px 2px rgba(0,0,0,.12);overflow:hidden}
+.bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:8px;
+  background:linear-gradient(180deg,#7ed24a,#4aab22);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.bar .fill.orange{background:linear-gradient(180deg,#ffbb52,#f59b18)}
+.bar .num{position:absolute;right:6px;top:0;line-height:15px;font-size:12.5px;font-weight:700;color:#fff;
+  text-shadow:0 1px 1px rgba(0,0,0,.18)}
+
+.divider{height:1px;background:#f0f1f4;margin:14px 0 12px}
+.bottom-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:8px}
+.money-block{display:flex;flex-direction:column;gap:6px}
+.money-head{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#1f9a45}
+.money-head .ic{font-size:16px}
+.field-label{font-size:13px;color:#5b7ea6;margin-top:2px}
+.pill-lite{height:24px;border-radius:12px;background:#e8f2fb;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#2f7fd0;box-shadow:inset 0 1px 2px rgba(80,120,170,.08)}
+.pill-lite.minus{background:#fdeff2;color:#ef5470}
+.house{display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700;color:#2f86dd;margin-top:8px}
+.house-text{font-size:13px;color:#3f6fa8;margin-top:2px}
+
+.job-block{display:flex;flex-direction:column;gap:7px}
+.job-line{display:flex;align-items:flex-start;gap:5px;font-size:15px;font-weight:700;color:#2f86dd;line-height:1.28}
+.job-line .ic{font-size:17px;line-height:1.15;flex:none}
+.job-name{flex:1;min-width:0;word-break:break-word}
+.job-status{flex:none;font-size:12.5px;color:#2f86dd;font-weight:500;line-height:1.4;padding-left:2px}
+.xp{display:flex;align-items:center;gap:5px}
+.exp-badge{background:#4a3a2a;color:#ffcf66;font-size:9px;font-weight:700;border-radius:4px;padding:2px 4px;
+  letter-spacing:.5px;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.xp-label{font-size:12px;color:#2f86dd;font-weight:700;white-space:nowrap}
+.bar.green{height:14px;flex:1;border-radius:7px}
+.edu-line{display:flex;align-items:center;gap:5px;font-size:15px;font-weight:700;color:#2f86dd;margin-top:6px}
+.edu-line .ic{font-size:16px}
+.edu-major{margin-left:auto;font-size:13px;color:#2f86dd}
+.schools{display:flex;flex-direction:column;gap:3px;margin-top:5px}
+.school{display:flex;align-items:baseline;gap:8px;font-size:11px}
+.school .y{color:#6b8fbb;min-width:60px;white-space:nowrap}
+.school .n{color:#3f7fbf}
+
+/* ============ 设置 / 改名 ============ */
+.mini{width:min(88%,330px);background:#fff;border-radius:24px;padding:20px 18px 16px;
+  box-shadow:0 20px 50px -10px rgba(10,25,50,.5);animation:pop .22s cubic-bezier(.2,.9,.3,1.2)}
+.mini h3{margin:0 0 14px;font-size:18px;color:#2f7fd0;text-align:center;letter-spacing:1px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px;font-size:14px;color:#45536a}
+.set-row input[type=range]{flex:1;accent-color:#2f8be8}
+.set-tip{font-size:11.5px;line-height:1.6;color:#8b9aad;padding:2px 2px 6px}
+.mini-btn{appearance:none;border:0;border-radius:11px;background:#eaf2fb;color:#2f7fd0;font:600 12.5px/1 'PingFang SC',sans-serif;padding:9px 14px;cursor:pointer}
+.mini-btn:active{transform:scale(.97)}
+input.text{width:100%;height:42px;border-radius:12px;border:2px solid #d7e2f0;padding:0 12px;font-size:16px;
+  font-family:inherit;color:#2f7fd0;font-weight:700;outline:none;background:#f8fbff}
+input.text:focus{border-color:#2f8be8}
+.mini-actions{display:flex;gap:10px;margin-top:14px}
+.btn{flex:1;height:44px;border-radius:14px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.btn.primary{background:linear-gradient(180deg,#3f9bf5,#2b83dd);color:#fff;box-shadow:0 4px 10px rgba(43,131,221,.3)}
+.btn.ghost{background:#eef3f9;color:#5b7ea6}
+.btn:active{transform:scale(.97)}
+
+/* 提示 */
+.toast{position:absolute;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);
+  background:rgba(30,40,55,.88);color:#fff;font-size:13px;padding:8px 16px;border-radius:18px;
+  opacity:0;transition:.25s;pointer-events:none;z-index:12;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="device" id="device">
+
+  <!-- ===== 顶部状态栏 ===== -->
+  <header class="hud">
+    <div class="stats">
+      <div class="stat">
+        <span class="badge-ic"><svg width="34" height="29" viewBox="0 0 40 34"><defs><linearGradient id="hg" x1="0" y1="0" x2="0.2" y2="1"><stop offset="0" stop-color="#ff8fae"/><stop offset="1" stop-color="#e62e5c"/></linearGradient></defs><path d="M20 32.5C10.5 24 2.5 17.2 2.5 9.8 2.5 4.6 6.5 1 10.8 1c3.8 0 7 2.4 9.2 6 2.2-3.6 5.4-6 9.2-6 4.3 0 8.3 3.6 8.3 8.8C37.5 17.2 29.5 24 20 32.5Z" fill="url(#hg)"/><ellipse cx="11" cy="8.5" rx="4.2" ry="3.2" fill="#fff" opacity=".45"/></svg></span>
+        <div class="pill" style="padding-left:16px"><span class="val pink" id="stat-life">30</span></div>
+      </div>
+
+      <div class="stat" style="flex-direction:column;align-items:stretch">
+        <div class="rate" id="stat-rate">+31.25K/s</div>
+        <span class="badge-ic"><svg width="36" height="29" viewBox="0 0 44 32"><defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fd44a"/><stop offset="1" stop-color="#2f8f2a"/></linearGradient><linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6cc23d"/><stop offset="1" stop-color="#267a22"/></linearGradient></defs><rect x="8" y="4" width="30" height="22" rx="4" fill="url(#bg2)" transform="translate(2,3)"/><rect x="8" y="4" width="30" height="22" rx="4" fill="url(#bg1)"/><rect x="8" y="14" width="30" height="5" fill="#ffc93c" opacity=".95"/><circle cx="23" cy="15" r="7" fill="#fff" opacity=".92"/><path d="M20 12.4h6M23 12.4v5.4M20.4 16h5.2" stroke="#2f8f2a" stroke-width="1.3"/></svg></span>
+        <div class="pill" style="padding-left:16px"><span class="val money" id="stat-money">29.63M</span></div>
+      </div>
+
+      <div class="stat">
+        <span class="badge-ic"><svg width="32" height="30" viewBox="0 0 34 32"><rect x="4" y="4" width="26" height="25" rx="5" fill="#fff"/><rect x="4" y="4" width="26" height="9" rx="4" fill="#ef4a5e"/><rect x="10" y="1" width="3" height="7" rx="1.5" fill="#f8f8fa"/><rect x="21" y="1" width="3" height="7" rx="1.5" fill="#f8f8fa"/><text x="17" y="25" text-anchor="middle" font-size="11" font-weight="700" fill="#8f98a6" font-family="Arial">30</text></svg></span>
+        <div class="pill" style="padding-left:14px"><span class="val date" id="stat-date">2415.02.23</span></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="circle-btn gear" id="btn-set" aria-label="设置">
+        <svg width="28" height="28" viewBox="0 0 24 24"><g fill="#fff">
+          <path d="M12 1.6l1.8 2.3 2.8-.6.6 2.8 2.6 1.3-1 2.7 1.3 2.5-2.5 1.4.1 2.9-2.8.6-2 2.1-2.3-1.7-2.3 1.7-.9-2.8-2.8-.6.1-2.9-2.4-1.4 1.3-2.5-1-2.7 2.6-1.3.6-2.8 2.8.6z"/>
+        </g><circle cx="12" cy="12" r="4.6" fill="#3f9bf5"/><circle cx="12" cy="12" r="2.1" fill="#fff"/></svg>
+      </button>
+
+      <button class="title-pill" id="btn-rename">
+        <span class="family-name" id="family-name">黄油兔饼家族</span>
+        <svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 20l1.2-4.4L16.5 4.3a1.6 1.6 0 012.3 0l1.6 1.6a1.6 1.6 0 010 2.3L9.2 19.4 4 20z" fill="#2f7fd0"/><path d="M14.6 6.2l3.2 3.2" stroke="#fff" stroke-width="1.6"/></svg>
+      </button>
+
+      <button class="circle-btn play" id="btn-play" aria-label="播放">
+        <svg id="play-ic" width="30" height="30" viewBox="0 0 32 32"><path d="M11 7.5l14 8.5-14 8.5z" fill="#fff"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== 家谱树 ===== -->
+  <main class="stage" id="stage">
+    <div class="world" id="world">
+      <svg class="links" id="links"></svg>
+      <div id="nodes"></div>
+    </div>
+
+    <div class="zoombar">
+      <div class="track" id="track"><div class="knob" id="knob">100</div></div>
+      <button class="home-btn" id="btn-home" aria-label="回到中心">
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3c-3.6 0-6.5 2.9-6.5 6.5 0 4.8 6.5 10.5 6.5 10.5S18.5 14.3 18.5 9.5C18.5 5.9 15.6 3 12 3z" fill="#c9d0da"/><circle cx="12" cy="9.6" r="2.6" fill="#7d899b"/></svg>
+      </button>
+    </div>
+    <div class="toast" id="toast"></div>
+  </main>
+
+  <!-- ===== 个人信息 ===== -->
+  <div class="overlay" id="overlay">
+    <div class="sheet" id="sheet">
+      <div class="sheet-head">
+        <h2>个人信息</h2>
+        <button class="sheet-close" id="btn-close-modal" aria-label="关闭">
+          <svg width="30" height="30" viewBox="0 0 30 30"><path d="M4 4l22 22M26 4L4 26" stroke="#fff" stroke-width="4.4" stroke-linecap="round" fill="none" style="paint-order:stroke"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" id="sheet-body"><!-- JS 填充 --></div>
+    </div>
+  </div>
+
+  <!-- ===== 设置 ===== -->
+  <div class="overlay" id="set-overlay">
+    <div class="mini">
+      <h3>设置</h3>
+      <div class="set-row"><span>时间流速</span><input type="range" id="speed" min="0" max="8" step="1" value="1"><b id="speed-v" style="width:38px;text-align:right">1×</b></div>
+      <div class="set-row"><span>显示每人速率</span><input type="checkbox" id="show-rate" checked style="width:20px;height:20px;accent-color:#2f8be8"></div>
+      <div class="set-row" style="border-top:1px solid #eaf0f7"><span>人物表</span><button class="mini-btn" id="btn-import">导入 Excel</button></div>
+      <div class="set-tip">读取「黄油兔饼家族-人物表.xlsx」→ 工作表「人物表」。改完直接重新导入，加人、减人、换配偶立刻重建家谱。</div>
+      <div class="mini-actions">
+        <button class="btn ghost" id="btn-reset">重置时间</button>
+        <button class="btn primary" id="btn-set-ok">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 改名 ===== -->
+  <div class="overlay" id="name-overlay">
+    <div class="mini">
+      <h3>家族名称</h3>
+      <input class="text" id="name-input" maxlength="10" value="黄油兔饼家族">
+      <div class="mini-actions">
+        <button class="btn ghost" id="btn-name-cancel">取消</button>
+        <button class="btn primary" id="btn-name-ok">确定</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================================
+   数据：黄油兔饼家族
+   ===================================================================== */
+const PEOPLE = {
+  p1:{name:'牙牙', gender:'f', age:20, rate:'-1.41K/s', tone:'pink',
+       hair:'short',hairColor:'#f2f2f6',cloth:'#e08a2e',glasses:false,skin:'#f4cdad',
+       stats:[132,52,138,100,86],job:'汽修二班班长',jobStatus:'在读',prof:0,
+       edu:'大学',major:'奶龙与柯基学',home:'皇宫',income:'-1.41K/s',expense:'-1.41K/s',
+       schools:[[2336,'国际本科'],[2332,'双语高中'],[2329,'双语中学'],[2325,'双语小学'],[2320,'双语幼儿园']]},
+  p2:{name:'岸岸', gender:'f', age:20, rate:null, tone:'pink',
+       hair:'long',hairColor:'#a9a9b2',cloth:'#5a4636',glasses:false,skin:'#e6b995',
+       stats:[109,66,92,100,80],job:'兔饼小店店长',jobStatus:'在读',prof:93,
+       edu:'大学',major:'烘焙学',home:'皇宫',income:'+0/s',expense:'-0/s',
+       schools:[[2345,'国际本科'],[2341,'双语高中'],[2338,'双语中学'],[2334,'双语小学'],[2329,'双语幼儿园']]},
+  p3:{name:'小布偶', gender:'f', age:20, rate:'-1.24K/s', tone:'pink',
+       hair:'long',hairColor:'#efeff4',cloth:'#e8734f',glasses:false,skin:'#f5cfae',
+       stats:[128,54,141,100,88],job:'游走于汽修班和兔饼店的神秘人',jobStatus:'在职',prof:88,
+       edu:'大学',major:'全能',home:'皇宫',income:'-1.24K/s',expense:'-1.24K/s',
+       schools:[[2360,'国际本科'],[2356,'双语高中'],[2353,'双语中学'],[2349,'双语小学'],[2344,'双语幼儿园']]},
+  p4:{name:'逢旧季', gender:'m', age:20, rate:'-1.82K/s', tone:'blue',
+       hair:'short',hairColor:'#dfe0e6',cloth:'#3f6fbf',glasses:false,skin:'#edc19d',
+       stats:[134,62,104,100,84],job:'射手叔叔',jobStatus:'在职',prof:100,
+       edu:'大学',major:'奶龙与柯基学',home:'官舍',income:'-1.82K/s',expense:'-1.82K/s',
+       schools:[[2360,'国际本科'],[2356,'双语高中'],[2353,'双语中学'],[2349,'双语小学'],[2344,'双语幼儿园']]},
+  p5:{name:'乐安', gender:'m', age:20, rate:null, tone:'blue',
+       hair:'short',hairColor:'#3a3330',cloth:'#4f7ab5',glasses:false,skin:'#f2c9aa',
+       stats:[143,79,100,100,88],job:'打野叔叔',jobStatus:'在职',prof:100,
+       edu:'大学',major:'烘焙学',home:'御膳房',income:'+0/s',expense:'-0/s',
+       schools:[]},
+};
+
+const FOREST0 = [
+  {adults:['p1','p2'], children:[
+    {adults:['p4'], children:[]},
+    {adults:['p5'], children:[]}
+  ]},
+  {adults:['p3'], children:[]}
+];
+
+/* =====================================================================
+   SVG 卡通头像（纯矢量，无外链）
+   ===================================================================== */
+function shade(hex, k){
+  const n = parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.max(0,Math.min(255,Math.round(r*k)));g=Math.max(0,Math.min(255,Math.round(g*k)));b=Math.max(0,Math.min(255,Math.round(b*k)));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+function hairBack(style, c){
+  const l = shade(c,1.14);
+  if(style==='bun'||style==='twin'||style==='long'||style==='bowl'){
+    return `<ellipse cx="50" cy="28" rx="26" ry="17" fill="${c}"/>`;
+  }
+  return `<ellipse cx="50" cy="26" rx="24" ry="14" fill="${c}"/>`;
+}
+
+function hairFront(style, c){
+  const d = shade(c,0.86), l = shade(c,1.16), e = shade(c,0.76);
+  switch(style){
+    case 'bun':
+      return `<path d="M23.5 44C22.5 23 33 9 50 9S77.5 23 76.5 44C74 34 70 29.5 64 28.5C58 27.5 56 30.5 50 30.5S42 27.5 36 28.5C30 29.5 26 34 23.5 44Z" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <path d="M30 27C33 18 40 13 50 13" stroke="${l}" stroke-width="1.8" fill="none" opacity=".55"/>
+        <path d="M27 33C22.5 39 22 49 25 57C27 61.5 31 63 33.5 61" stroke="${c}" stroke-width="7.5" stroke-linecap="round" fill="none" stroke-dasharray="9 3"/>
+        <path d="M73 33C77.5 39 78 49 75 57C73 61.5 69 63 66.5 61" stroke="${c}" stroke-width="7.5" stroke-linecap="round" fill="none" stroke-dasharray="9 3"/>
+        <circle cx="50" cy="11" r="8.6" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <path d="M42.8 10C44.6 5.5 47 4 50 4" stroke="${l}" stroke-width="1.4" fill="none" opacity=".55"/>`;
+    case 'twin':
+      return `<path d="M23.5 44C22.5 23 33 9 50 9S77.5 23 76.5 44C74 35.5 70 31.5 63 30.5C57 29.5 55 32.5 50 32.5S43 29.5 37 30.5C30 31.5 26 35.5 23.5 44Z" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <circle cx="20" cy="20" r="9" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <circle cx="80" cy="20" r="9" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <circle cx="17" cy="17" r="2.8" fill="#fff" opacity=".4"/><circle cx="77" cy="17" r="2.8" fill="#fff" opacity=".4"/>`;
+    case 'long':
+      return `<path d="M23 42C22 20 33 8 50 8S78 20 77 42C74 33 69 30 62 30C57 30.5 55 33 50 33S43 30.5 38 30C31 30 26 33 23 42Z" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <path d="M26.5 30C22 40 21 52 24 62C26 68 30 70 34 69" stroke="${d}" stroke-width="9" stroke-linecap="round" fill="none" opacity=".95"/>
+        <path d="M73.5 30C78 40 79 52 76 62C74 68 70 70 66 69" stroke="${d}" stroke-width="9" stroke-linecap="round" fill="none" opacity=".95"/>
+        <path d="M50 9V30" stroke="${d}" stroke-width="1.2" opacity=".5"/>`;
+    case 'bowl':
+      return `<path d="M23 45C22 22 33 9 50 9S78 22 77 45C74 36 68 32 60 32C55 32 53 35 50 35S45 32 40 32C32 32 26 36 23 45Z" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <path d="M29 27C33 17 41 13 50 13S67 17 71 27C66 21 58 19 50 19S34 21 29 27Z" fill="${l}" opacity=".3"/>
+        <path d="M24 36C22 44 22 51 24 57M76 36C78 44 78 51 76 57" stroke="${c}" stroke-width="5.5" stroke-linecap="round" fill="none"/>`;
+    case 'grandpa':
+      return `<path d="M26.5 42C26.5 21 35 12 50 12S73.5 21 73.5 42C71 33 67 31 61 31.5C55 32.5 54 35 50 35S45 32.5 39 31.5C33 31 29 33 26.5 42Z" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <path d="M32 26C36 18 42 15 50 15" stroke="${l}" stroke-width="1.4" fill="none" opacity=".5"/>
+        <path d="M28.5 39C27 44 27 48 28 51M71.5 39C73 44 73 48 72 51" stroke="${c}" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+    case 'short':
+      return `<path d="M26.5 40C26.5 19 35.5 11 50 11S73.5 19 73.5 40C71 30 66 27 59 27C54 28.5 53 31 50 31S46 28.5 41 27C34 27 29 30 26.5 40Z" fill="${c}" stroke="${e}" stroke-width=".9"/>
+        <path d="M33 24C37 16 43 13 50 13" stroke="${l}" stroke-width="1.3" fill="none" opacity=".4"/>
+        <path d="M28 38C27 43 27 47 28 50M72 38C73 43 73 47 72 50" stroke="${c}" stroke-width="4" stroke-linecap="round" fill="none"/>`;
+  }
+  return '';
+}
+
+function avatarSVG(p){
+  const style = p.hair || 'short';
+  const hairColor = p.hairColor || '#3a2d28';
+  const skin = p.skin || '#f0c7a6';
+  const cloth = p.cloth || '#5a6f9a';
+  const age = Number(p.age) || 30;
+  const kid = age < 16;
+  const old = age >= 60;
+  const eyeY = 45;
+  const eyeRx = kid ? 3.4 : 3.1;
+  const eyeRy = kid ? 4.1 : 3.8;
+
+  const face = `
+    <ellipse cx="41.5" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="#3e2f2a"/>
+    <ellipse cx="58.5" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="#3e2f2a"/>
+    <circle cx="42.5" cy="${eyeY-1.5}" r=".95" fill="#fff" opacity=".85"/>
+    <circle cx="59.5" cy="${eyeY-1.5}" r=".95" fill="#fff" opacity=".85"/>
+    <path d="M37.6 37.4q4-1.8 7.4-.4M55.4 37q4-1.4 7.4.4" stroke="${shade(hairColor,0.9)}" stroke-width="1.15" fill="none" stroke-linecap="round" opacity="${old?0.55:0.9}"/>
+    <path d="M50.2 49v2.6q0 1.5-1.6 1.7" stroke="${shade(skin,0.8)}" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M43.8 57.4q6.2 ${kid?5.6:4.6} 12.4 0" stroke="#b46a64" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <ellipse cx="34.6" cy="54" rx="5" ry="3.1" fill="#f29c9c" opacity=".38"/>
+    <ellipse cx="65.4" cy="54" rx="5" ry="3.1" fill="#f29c9c" opacity=".38"/>
+    ${old?`<path d="M32.6 ${eyeY+4.6}q2.2 1.9 4.1 1.4M63.4 ${eyeY+4.6}q2.2 1.9 4.1 1.4M47.4 55.8q2.6 1.2 5.2 0" stroke="${shade(skin,0.84)}" stroke-width=".8" fill="none" opacity=".75"/>`:''}
+  `;
+
+  const glasses = p.glasses ? `
+    <g fill="none" stroke="#4a3c34" stroke-width="1.5" opacity=".95">
+      <rect x="32.4" y="${eyeY-6.6}" width="15.4" height="12.6" rx="5.6"/>
+      <rect x="52.2" y="${eyeY-6.6}" width="15.4" height="12.6" rx="5.6"/>
+      <path d="M47.8 ${eyeY-1}v1.4M32.4 ${eyeY-1}l-3.6-1.2M67.6 ${eyeY-1}l3.6-1.2" stroke-width="1.15"/>
+      <path d="M35 ${eyeY-4.8}q3.4-1.8 6.6 0" stroke="#fff" stroke-width="1.4" opacity=".45"/>
+    </g>` : '';
+
+  const earrings = (p.earrings && !kid)
+    ? `<circle cx="27.6" cy="52" r="2" fill="#f4d27a" stroke="#d9ae4a" stroke-width=".6"/>
+       <circle cx="72.4" cy="52" r="2" fill="#f4d27a" stroke="#d9ae4a" stroke-width=".6"/>` : '';
+
+  const collar = kid ? '' : `
+    <path d="M40.5 79L50 87L59.5 79L55 77L50 83L45 77Z" fill="#fff" opacity=".9"/>
+    <path d="M40.5 79L45 77M59.5 79L55 77" stroke="${shade(cloth,0.72)}" stroke-width=".8" opacity=".55"/>`;
+
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <radialGradient id="bg-${p.name}" cx="50%" cy="28%" r="76%">
+        <stop offset="0" stop-color="${kid?'#efe4eb':'#d3d3dc'}"/><stop offset="1" stop-color="${kid?'#d5cad2':'#bebec9'}"/>
+      </radialGradient>
+    </defs>
+    <rect width="100" height="100" fill="url(#bg-${p.name})"/>
+    ${hairBack(style, hairColor)}
+    <path d="M11 100C12 87 27 79 50 79S88 87 89 100Z" fill="${cloth}"/>
+    <path d="M11 100C12 87 27 79 50 79S88 87 89 100Z" fill="none" stroke="${shade(cloth,0.82)}" stroke-width=".9" opacity=".4"/>
+    ${collar}
+    <path d="M44 64h12v14h-12z" fill="${shade(skin,0.9)}"/>
+    <ellipse cx="50" cy="44" rx="22" ry="25.5" fill="${skin}"/>
+    <ellipse cx="50" cy="44" rx="22" ry="25.5" fill="none" stroke="${shade(skin,0.88)}" stroke-width=".9" opacity=".45"/>
+    <ellipse cx="27.6" cy="47" rx="4.4" ry="5.6" fill="${skin}"/>
+    <ellipse cx="72.4" cy="47" rx="4.4" ry="5.6" fill="${skin}"/>
+    ${hairFront(style, hairColor)}
+    <path d="M28 36C30 27 38 21 50 21S70 27 72 36" stroke="${shade(hairColor,0.84)}" stroke-width="1.6" fill="none" opacity=".3"/>
+    <path d="M32 24C36 18 43 15 50 15M68 24C64 18 57 15 50 15" stroke="${shade(hairColor,1.12)}" stroke-width="1.2" fill="none" opacity=".45"/>
+    ${face}
+    ${glasses}
+    ${earrings}
+    <path d="M44 25q7-3 12 2" stroke="#fff" stroke-width="1.6" fill="none" opacity=".26"/>
+  </svg>`;
+}
+
+/* =====================================================================
+   布局
+   ===================================================================== */
+const CARD_W = 112, CARD_H = 158, COUPLE_W = 228, COUPLE_H = 158, SINGLE_W = 132;
+const GAP_X = 12, GAP_Y = 46;   // 世代垂直间距（卡片间空隙）
+
+const nodesEl = document.getElementById('nodes');
+const linksEl = document.getElementById('links');
+const worldEl = document.getElementById('world');
+
+function toneClass(p){ return p.tone==='plain' ? '' : (p.tone==='pink' ? 'p' : 'm'); }
+function toneColor(p){ return p.tone==='plain' ? '#c9c9d0' : (p.tone==='pink' ? '#ef5470' : '#3f9bea'); }
+
+let flat = [];
+function buildNode(n, depth){
+  const node = {adults:n.adults, children:(n.children||[]).map(c=>buildNode(c,depth+1)), depth,
+    w:0, x:0, y: depth * (COUPLE_H + GAP_Y)};
+  return node;
+}
+function unitW(n){ return n.adults.length===1 ? SINGLE_W : COUPLE_W; }
+function measure(node){
+  if(!node.children.length){ node.w = unitW(node); }
+  else{
+    const total = node.children.reduce((s,c,i)=>s + (measure(c), c.w) + (i? GAP_X:0), 0);
+    node.w = Math.max(unitW(node), total);
+  }
+  return node.w;
+}
+function place(node, left){
+  node.x = left + node.w/2;
+  if(node.children.length){
+    const total = node.children.reduce((s,c,i)=>s + c.w + (i?GAP_X:0), 0);
+    let cur = node.x - total/2;
+    node.children.forEach(c=>{ place(c, cur); cur += c.w + GAP_X; });
+  }
+  flat.push(node);
+}
+
+/* ---------- 布局 & 渲染（导入人物表后可整体重建） ---------- */
+const PAD = 120;
+let ROOT = null, ROUTS = [], FOREST = FOREST0.slice();
+let minX = 0, maxX = 0, maxY = 0, WORLD_W = 0, WORLD_H = 0;
+let showRateFlag = true;
+
+function centerX(){ return ROUTS.length ? ROUTS.reduce((a,r)=>a+r.x,0)/ROUTS.length : 0; }
+
+function renderCards(){
+  let html = '';
+  flat.forEach((n, idx)=>{
+    const cx = n.x - minX + PAD;
+    const cy = n.y + PAD;
+    const members = n.adults;
+    html += `<div class="couple${members.length===1?' single':''}" data-node="${idx}" style="left:${cx - (members.length===1?SINGLE_W/2:COUPLE_W/2)}px;top:${cy}px">`;
+    members.forEach(id=>{
+      const p = PEOPLE[id];
+      if(!p) return;
+      const tc = toneClass(p);
+      const ring = p.tone==='plain' ? '' : (p.tone==='pink'?'f':'m');
+      html += `<div class="card" data-person="${id}">
+        <div class="tag ${tc}">${p.name}</div>
+        <div class="avatar-wrap ${ring}"><div class="avatar-inner">${avatarSVG(p)}</div></div>
+        <div class="age-row" data-age="${id}"><b>${p.age}</b><span class="sep"></span><span class="gain ${p.rate? (String(p.rate).startsWith('-')?'neg':'pos') : 'nodata'}" data-rate="${id}">${p.rate || '—'}</span></div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  nodesEl.innerHTML = html;
+}
+
+function renderLinks(){
+  let paths = '';
+  flat.forEach(n=>{
+    if(!n.children.length) return;
+    const px = n.x - minX + PAD;
+    const pyBottom = n.y + CARD_H - 4 + PAD;
+    const busY = pyBottom + GAP_Y/2;
+    paths += `<path d="M${px} ${pyBottom} V${busY}"/>`;
+    if(n.children.length > 1){
+      const xs = n.children.map(c=>c.x - minX + PAD);
+      paths += `<path d="M${Math.min(...xs)} ${busY} H${Math.max(...xs)}"/>`;
+    }
+    n.children.forEach(c=>{
+      const cx = c.x - minX + PAD;
+      const childTop = c.y + PAD - 2;
+      paths += `<path d="M${cx} ${busY} V${childTop}"/>`;
+    });
+  });
+  linksEl.innerHTML = paths;
+}
+
+function rebuild(){
+  flat = [];
+  ROUTS = (FOREST.length ? FOREST : FOREST0).map(t=>{ const n = buildNode(t, 0); measure(n); return n; });
+  let cur = 0;
+  ROUTS.forEach(r=>{ place(r, cur); cur += r.w + GAP_X*3; });
+  ROOT = ROUTS[0];
+
+  minX = Infinity; maxX = -Infinity; maxY = 0;
+  flat.forEach(n=>{
+    minX = Math.min(minX, n.x - unitW(n)/2);
+    maxX = Math.max(maxX, n.x + unitW(n)/2);
+    maxY = Math.max(maxY, n.y + COUPLE_H);
+  });
+  if(!isFinite(minX)){ minX = 0; maxX = COUPLE_W; maxY = COUPLE_H; }
+
+  WORLD_W = Math.ceil(maxX - minX + PAD*2);
+  WORLD_H = Math.ceil(maxY + PAD*2 + 30);
+  worldEl.style.width = WORLD_W + 'px';
+  worldEl.style.height = WORLD_H + 'px';
+  linksEl.setAttribute('width', WORLD_W);
+  linksEl.setAttribute('height', WORLD_H);
+
+  renderCards();
+  renderLinks();
+  document.querySelectorAll('[data-rate]').forEach(el=>{
+    el.style.visibility = showRateFlag ? 'visible' : 'hidden';
+  });
+}
+
+rebuild();
+
+/* =====================================================================
+   缩放 / 拖拽
+   ===================================================================== */
+const stage = document.getElementById('stage');
+const MIN_S = 0.14, MAX_S = 1.9;
+let view = {x:0,y:0,s:0.9};
+
+function applyView(){
+  worldEl.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.s})`;
+  const k = document.getElementById('knob');
+  const t = (Math.log(view.s)-Math.log(MIN_S))/(Math.log(MAX_S)-Math.log(MIN_S));
+  k.style.bottom = (Math.max(0,Math.min(1,t))*100) + '%';
+  k.textContent = Math.round(view.s*100);
+}
+
+function fitView(){
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const treeW = maxX - minX;
+  let s = Math.min(1.02, (sw-28)/treeW);
+  s = Math.max(MIN_S, s);
+  view.s = s;
+  view.x = sw/2 - (centerX() - minX + PAD) * s;
+  view.y = 14 - PAD*s + 8;
+  applyView();
+}
+function initialView(){
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const treeW = maxX - minX, treeH = maxY;
+  const leftPad = 30, rightPad = 8;
+  const availW = sw - leftPad - rightPad;
+  let s = Math.min((sh - 26)/treeH, availW/treeW);
+  s = Math.max(MIN_S, Math.min(0.6, s));
+  view.s = s;
+  const offsetX = leftPad + (availW - treeW*s)/2;
+  view.x = offsetX - PAD*s;
+  view.y = 22 - PAD*s;
+  applyView();
+}
+function nodesWidth(){ return (maxX-minX) + PAD*2; }
+
+let drag = null;
+stage.addEventListener('pointerdown', e=>{
+  if(e.target.closest('.zoombar')) return;
+  drag = {id:e.pointerId, x:e.clientX, y:e.clientY, vx:view.x, vy:view.y};
+  stage.classList.add('dragging');
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove', e=>{
+  if(!drag || e.pointerId!==drag.id) return;
+  view.x = drag.vx + (e.clientX - drag.x);
+  view.y = drag.vy + (e.clientY - drag.y);
+  applyView();
+});
+stage.addEventListener('pointerup', e=>{
+  const wasDrag = dragMoved;
+  drag=null; stage.classList.remove('dragging');
+  if(!wasDrag && e.target.closest && !e.target.closest('.zoombar')) pickCard(e);
+});
+stage.addEventListener('pointercancel', ()=>{ drag=null; stage.classList.remove('dragging'); });
+
+stage.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const rect = stage.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const factor = Math.exp(-e.deltaY*0.0016);
+  zoomAt(mx,my,view.s*factor);
+},{passive:false});
+
+function zoomAt(mx,my,ns){
+  ns = Math.max(MIN_S, Math.min(MAX_S, ns));
+  const k = ns/view.s;
+  view.x = mx - (mx - view.x)*k;
+  view.y = my - (my - view.y)*k;
+  view.s = ns;
+  applyView();
+}
+
+stage.addEventListener('dblclick', e=>{
+  const rect = stage.getBoundingClientRect();
+  zoomAt(e.clientX-rect.left, e.clientY-rect.top, view.s>1.2? 0.9 : Math.min(MAX_S, view.s*1.6));
+});
+
+/* 双指缩放 */
+let pinch = null;
+stage.addEventListener('touchstart', e=>{
+  if(e.touches.length===2){
+    const [a,b] = e.touches;
+    pinch = {d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY), s:view.s,
+      cx:(a.clientX+b.clientX)/2, cy:(a.clientY+b.clientY)/2};
+    drag = null;
+  }
+},{passive:true});
+stage.addEventListener('touchmove', e=>{
+  if(pinch && e.touches.length===2){
+    e.preventDefault();
+    const [a,b] = e.touches;
+    const d = Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    const rect = stage.getBoundingClientRect();
+    zoomAt(pinch.cx-rect.left, pinch.cy-rect.top, pinch.s*(d/pinch.d));
+  }
+},{passive:false});
+stage.addEventListener('touchend', e=>{ if(e.touches.length<2) pinch=null; });
+
+/* 缩放条拖拽 */
+const track = document.getElementById('track');
+const knob = document.getElementById('knob');
+let railDrag = false;
+function railTo(clientY){
+  const r = track.getBoundingClientRect();
+  const t = 1 - (clientY - r.top)/r.height;
+  const s = Math.exp(Math.log(MIN_S) + Math.max(0,Math.min(1,t))*(Math.log(MAX_S)-Math.log(MIN_S)));
+  zoomAt(stage.clientWidth/2, stage.clientHeight/2, s);
+}
+track.addEventListener('pointerdown', e=>{ railDrag=true; track.setPointerCapture(e.pointerId); railTo(e.clientY); e.stopPropagation(); });
+track.addEventListener('pointermove', e=>{ if(railDrag) railTo(e.clientY); });
+track.addEventListener('pointerup', ()=>{ railDrag=false; });
+document.getElementById('btn-home').addEventListener('click', fitView);
+
+/* =====================================================================
+   游戏时钟
+   ===================================================================== */
+const state = {money:29.63e6, rate:31250, y:2415, m:2, d:23, day:0, speed:1, playing:true, showRate:true};
+let last = performance.now();
+function bumpAges(){
+  Object.entries(PEOPLE).forEach(([id,p])=>{
+    p.age += 1;
+    const el = document.querySelector(`.age-row[data-age="${id}"] b`);
+    if(el) el.textContent = p.age;
+  });
+}
+
+function fmtMoney(v){
+  if(Math.abs(v)>=1e6) return (v/1e6).toFixed(2)+'M';
+  if(Math.abs(v)>=1e3) return (v/1e3).toFixed(2)+'K';
+  return v.toFixed(0);
+}
+function fmtRate(v){
+  const sign = v>=0?'+':'-';
+  const a = Math.abs(v);
+  if(a>=1e3) return `${sign}${(a/1e3).toFixed(2)}K/s`;
+  return `${sign}${a.toFixed(0)}/s`;
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+function daysInMonth(y,m){ return [31,(y%4===0&&y%100!==0)||y%400===0?29:28,31,30,31,30,31,31,30,31,30,31][m-1]; }
+
+function tick(now){
+  const dt = Math.min(1.2, (now-last)/1000); last = now;
+  if(state.playing){
+    state.money += state.rate*dt*state.speed;
+    state.day += dt*state.speed;
+    while(state.day >= 1){
+      state.day -= 1;
+      state.d += 1;
+      if(state.d > daysInMonth(state.y,state.m)){ state.d=1; state.m++; if(state.m>12){ state.m=1;state.y++; bumpAges(); } }
+    }
+    document.getElementById('stat-money').textContent = fmtMoney(state.money);
+    document.getElementById('stat-date').textContent = `${state.y}.${pad2(state.m)}.${pad2(state.d)}`;
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+/* =====================================================================
+   弹窗
+   ===================================================================== */
+const overlay = document.getElementById('overlay');
+const sheetBody = document.getElementById('sheet-body');
+
+function statRow(emoji, label, val, pid, idx, orange){
+  const pct = Math.max(2, Math.min(100, val/160*100));
+  const c = orange ? '#f59b18' : '#4aab22';
+  return `<div class="stat-row">
+    <div class="ic">${emoji}</div>
+    <div>
+      <div class="stat-label">${label}</div>
+      <input class="st-slider" type="range" min="0" max="160" step="1" value="${val}"
+        data-pid="${pid}" data-si="${idx}" style="--p:${pct}%;--c:${c}" aria-label="${label}">
+    </div>
+    <div class="stat-val">${val}</div>
+  </div>`;
+}
+
+function onStatSlide(e){
+  const inp = e.currentTarget;
+  const pid = inp.dataset.pid, i = Number(inp.dataset.si), v = Number(inp.value);
+  const p = PEOPLE[pid];
+  if(!p) return;
+  p.stats[i] = v;
+  inp.style.setProperty('--p', Math.max(2, Math.min(100, v/160*100)) + '%');
+  inp.style.setProperty('--c', (i===1 && v<60) ? '#f59b18' : '#4aab22');
+  const valEl = inp.closest('.stat-row').querySelector('.stat-val');
+  if(valEl) valEl.textContent = v;
+}
+
+function openPerson(id){
+  const p = PEOPLE[id];
+  const sym = p.gender==='m' ? '♂' : '♀';
+  const schools = p.schools.length
+    ? p.schools.map(s=>`<div class="school"><span class="y">${s[0]}.6.10</span><span class="n">${s[1]}</span></div>`).join('')
+    : '<div class="school"><span class="n" style="color:#9aa7b8">暂无就学记录</span></div>';
+  sheetBody.innerHTML = `
+    <div class="top-grid">
+      <div class="profile">
+        <div class="p-avatar ${p.gender}"><div class="p-avatar-inner">${avatarSVG(p)}</div></div>
+        <div class="p-name"><span class="sym">${sym}</span><span>${p.name}</span></div>
+        <div class="p-age">${p.age}</div>
+      </div>
+      <div class="stats-list">
+        ${statRow('💡','智力',p.stats[0],id,0)}
+        ${statRow('💪','体质',p.stats[1],id,1,p.stats[1]<60)}
+        ${statRow('✨','魅力',p.stats[2],id,2)}
+        ${statRow('❤️','人品',p.stats[3],id,3)}
+        ${statRow('😀','快乐',p.stats[4],id,4)}
+        <div class="stat-hint">拖动拉杆即可调节</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="bottom-grid">
+      <div class="money-block">
+        <div class="money-head"><span class="ic">💵</span>${p.income}</div>
+        <div class="field-label">收入：</div>
+        <div class="pill-lite">${p.income}</div>
+        <div class="field-label">支出：</div>
+        <div class="pill-lite minus">${p.expense}</div>
+        <div class="house"><span class="ic">🏢</span>住房</div>
+        <div class="house-text">${p.home}</div>
+      </div>
+      <div class="job-block">
+        <div class="job-line"><span class="ic">👔</span><span class="job-name">${p.job}</span><span class="job-status">${p.jobStatus}</span></div>
+        <div class="xp">
+          <span class="exp-badge">EXP</span><span class="xp-label">熟练度</span>
+          <div class="bar green"><div class="fill" style="width:${Math.max(6,p.prof)}%"></div><span class="num">${p.prof}</span></div>
+        </div>
+        <div class="edu-line"><span class="ic">🎓</span><span>学历</span><span style="margin-left:4px">${p.edu}</span><span class="edu-major">${p.major}</span></div>
+        <div class="schools">${schools}</div>
+      </div>
+    </div>`;
+  sheetBody.querySelectorAll('.st-slider').forEach(inp=>{
+    inp.addEventListener('input', onStatSlide);
+  });
+  overlay.classList.add('show');
+}
+function closeModal(){ overlay.classList.remove('show'); }
+
+function pickCard(e){
+  if(dragMoved) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const card = el && el.closest('.card');
+  if(card) openPerson(card.dataset.person);
+}
+let dragMoved = false;
+stage.addEventListener('pointerdown', ()=>{ dragMoved=false; });
+stage.addEventListener('pointermove', e=>{ if(drag && (Math.abs(e.clientX-drag.x)>4 || Math.abs(e.clientY-drag.y)>4)) dragMoved = true; });
+
+document.getElementById('btn-close-modal').onclick = closeModal;
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeModal(); closeMini(); } });
+
+/* =====================================================================
+   播放 / 设置 / 改名
+   ===================================================================== */
+/* =====================================================================
+   导入人物表（xlsx / csv）
+   ===================================================================== */
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.accept = '.xlsx,.xls,.csv';
+fileInput.style.display = 'none';
+document.body.appendChild(fileInput);
+
+var HAIR_MAP = {'短发':'short','背头':'grandpa','盘发':'bun','长发':'long','锅盖':'bowl','双丸子':'twin'};
+var LEVELS = [['本科','国际本科'],['高中','双语高中'],['中学','双语中学'],['小学','双语小学'],['幼儿园','双语幼儿园']];
+
+function num(v, dft){ const n = parseFloat(v); return isFinite(n) ? n : dft; }
+const yn = v => String(v).trim()==='是';
+const hex = (v, dft) => /^#[0-9a-fA-F]{6}$/.test(String(v).trim()) ? String(v).trim() : dft;
+
+function parseRows(rows){
+  const people = {}, order = [];
+  rows.forEach(r=>{
+    const id = String(r['ID'] ?? '').trim();
+    if(!id) return;
+    const inc = String(r['收入速率'] ?? '').trim() || '+0/s';
+    const exp = String(r['支出速率'] ?? '').trim() || '-0/s';
+    const amt = parseFloat(inc.replace(/[^0-9.]/g,''));
+    const rate = inc.startsWith('-') ? inc : (amt > 0 ? inc : null);
+    const toneRaw = String(r['高亮'] ?? '').trim();
+    const tone = toneRaw==='粉色' ? 'pink' : toneRaw==='蓝色' ? 'blue' : 'plain';
+    const schools = [];
+    LEVELS.forEach(([k,label])=>{ const y = num(r[k], 0); if(y) schools.push([y, label]); });
+    people[id] = {
+      name: String(r['姓名'] ?? id).trim() || id,
+      gender: String(r['性别'] ?? '').trim()==='女' ? 'f' : 'm',
+      age: Math.max(0, Math.round(num(r['年龄'], 30))),
+      rate, tone, life:'在世',
+      hair: HAIR_MAP[String(r['发型'] ?? '').trim()] || 'short',
+      hairColor: hex(r['发色'], '#3a3330'), cloth: hex(r['衣服色'], '#4f7ab5'),
+      skin: hex(r['肤色'], '#f2c9aa'),
+      glasses: yn(r['眼镜']), earrings: yn(r['耳环']),
+      stats: [num(r['智力'],80),num(r['体质'],70),num(r['魅力'],80),num(r['人品'],80),num(r['快乐'],80)],
+      job: String(r['职业'] ?? '—').trim(), jobStatus: String(r['职业状态'] ?? '').trim(),
+      prof: Math.max(0, Math.min(100, Math.round(num(r['熟练度'], 0)))),
+      edu: String(r['学历'] ?? '—').trim(), major: String(r['专业'] ?? '—').trim(),
+      home: String(r['住房'] ?? '—').trim(), income: inc, expense: exp, schools,
+      spouse: String(r['配偶ID'] ?? r['配偶'] ?? '').trim(),
+      father: String(r['父亲ID'] ?? r['父亲'] ?? '').trim(),
+      mother: String(r['母亲ID'] ?? r['母亲'] ?? '').trim()
+    };
+    order.push(id);
+  });
+  return {people, order};
+}
+
+function forestFrom(people, order){
+  const units = [], unitOf = {}, used = {};
+  order.forEach(id=>{
+    if(used[id] || !people[id]) return;
+    const p = people[id];
+    const sp = (p.spouse && people[p.spouse] && !used[p.spouse]) ? p.spouse : '';
+    const u = {adults: sp ? [id, sp] : [id], parent:null, children:[]};
+    used[id] = 1; if(sp) used[sp] = 1;
+    units.push(u); unitOf[id] = u; if(sp) unitOf[sp] = u;
+  });
+  // 同一个孩子的父亲 + 母亲，如果各自单身，就并成一格
+  const pairMap = {};
+  order.forEach(id=>{
+    const p = people[id]; if(!p) return;
+    const f = p.father && people[p.father] ? p.father : '';
+    const m = p.mother && people[p.mother] ? p.mother : '';
+    if(!f || !m) return;
+    const uf = unitOf[f], um = unitOf[m];
+    if(!uf || !um || uf === um) return;
+    if(uf.adults.length > 1 || um.adults.length > 1) return;
+    uf.adults = uf.adults.concat(um.adults);
+    um.adults.forEach(x=>{ unitOf[x] = uf; });
+    const i2 = units.indexOf(um);
+    if(i2 > -1) units.splice(i2, 1);
+  });
+
+  units.forEach(u=>{
+    for(const id of u.adults){
+      const p = people[id];
+      const par = [p.father, p.mother].find(x=>x && people[x]);
+      if(par && unitOf[par] && unitOf[par] !== u){ u.parent = unitOf[par]; break; }
+    }
+  });
+  let roots = units.filter(u=>!u.parent);
+  if(!roots.length) roots = units;
+  units.forEach(u=>{ if(u.parent) u.parent.children.push(u); });
+  const mk = u => ({adults:u.adults.slice(), children:u.children.map(mk)});
+  return roots.map(mk);
+}
+
+function applyTable(people, order){
+  Object.keys(PEOPLE).forEach(k=>delete PEOPLE[k]);
+  order.forEach(id=>{ PEOPLE[id] = people[id]; });
+  FOREST = forestFrom(people, order);
+  rebuild();
+  requestAnimationFrame(()=>initialView());
+  const n = order.length;
+  setOverlay.classList.remove('show');
+  toast(`已载入人物表：${n} 人`);
+}
+
+function loadXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  const urls = [
+    'https://fastly.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  ];
+  const tryOne = i => new Promise((res, rej)=>{
+    if(i >= urls.length) return rej(new Error('cdn'));
+    const sc = document.createElement('script');
+    sc.src = urls[i];
+    sc.onload = ()=> res();
+    sc.onerror = ()=> { sc.remove(); tryOne(i+1).then(res, rej); };
+    document.head.appendChild(sc);
+  });
+  return tryOne(0).then(()=>{ if(!window.XLSX) throw new Error('cdn'); });
+}
+
+document.getElementById('btn-import').onclick = ()=> fileInput.click();
+fileInput.onchange = e=>{
+  const f = e.target.files && e.target.files[0];
+  fileInput.value = '';
+  if(!f) return;
+  toast('正在读取人物表…');
+  loadXLSX().then(()=>{
+    const rd = new FileReader();
+    rd.onload = ev=>{
+      try{
+        const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+        const sh = wb.Sheets['人物表'] || wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sh, {defval:'', raw:true});
+        if(!rows.length) throw new Error('empty');
+        if(!('ID' in rows[0]) || !('姓名' in rows[0])) throw new Error('format');
+        const {people, order} = parseRows(rows);
+        if(!order.length) throw new Error('empty');
+        applyTable(people, order);
+      }catch(err){
+        toast(err.message==='format' ? '表头不匹配，需含「ID」「姓名」列' : '读取失败，请确认是人物表文件');
+      }
+    };
+    rd.readAsArrayBuffer(f);
+  }).catch(()=> toast('导入需联网加载解析库，请稍后重试'));
+};
+
+const playBtn = document.getElementById('btn-play');
+function renderPlay(){
+  const playing = state.playing;
+  document.getElementById('play-ic').innerHTML = playing
+    ? '<rect x="10" y="8" width="4.6" height="16" rx="1.5" fill="#fff"/><rect x="18.4" y="8" width="4.6" height="16" rx="1.5" fill="#fff"/>'
+    : '<path d="M11 7.5l14 8.5-14 8.5z" fill="#fff"/>';
+  document.getElementById('stat-rate').style.opacity = playing ? '1' : '.55';
+  document.getElementById('stat-rate').textContent = (playing?'+':'') + fmtRate(state.rate).replace(/^[+-]/,'').replace('/s','') + '/s';
+}
+playBtn.onclick = ()=>{
+  state.playing = !state.playing;
+  renderPlay();
+  toast(state.playing ? '时间继续流动' : '已暂停时间');
+};
+
+const setOverlay = document.getElementById('set-overlay');
+document.getElementById('btn-set').onclick = ()=>{ setOverlay.classList.add('show'); };
+document.getElementById('btn-set-ok').onclick = ()=>{ setOverlay.classList.remove('show'); };
+setOverlay.addEventListener('click', e=>{ if(e.target===setOverlay) setOverlay.classList.remove('show'); });
+document.getElementById('speed').oninput = e=>{
+  state.speed = Number(e.target.value);
+  document.getElementById('speed-v').textContent = state.speed===0 ? '暂停' : state.speed+'×';
+  if(state.speed>0 && !state.playing){ state.playing=true; renderPlay(); }
+};
+document.getElementById('show-rate').onchange = e=>{
+  showRateFlag = e.target.checked;
+  document.querySelectorAll('[data-rate]').forEach(el=>{
+    el.style.visibility = showRateFlag ? 'visible' : 'hidden';
+  });
+};
+document.getElementById('btn-reset').onclick = ()=>{
+  state.money = 29.63e6; state.y=2415; state.m=2; state.d=23; state.day=0;
+  document.getElementById('stat-money').textContent = fmtMoney(state.money);
+  document.getElementById('stat-date').textContent = '2415.02.23';
+  toast('时间已重置');
+};
+
+const nameOverlay = document.getElementById('name-overlay');
+const nameInput = document.getElementById('name-input');
+document.getElementById('btn-rename').onclick = ()=>{
+  nameInput.value = document.getElementById('family-name').textContent;
+  nameOverlay.classList.add('show');
+  setTimeout(()=>{ nameInput.focus(); nameInput.select(); },120);
+};
+document.getElementById('btn-name-cancel').onclick = ()=> nameOverlay.classList.remove('show');
+document.getElementById('btn-name-ok').onclick = ()=>{
+  const v = nameInput.value.trim() || '黄油兔饼家族';
+  document.getElementById('family-name').textContent = v;
+  nameOverlay.classList.remove('show');
+  toast('家族名称已更新');
+};
+nameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('btn-name-ok').click(); });
+nameOverlay.addEventListener('click', e=>{ if(e.target===nameOverlay) nameOverlay.classList.remove('show'); });
+
+function closeMini(){
+  setOverlay.classList.remove('show');
+  nameOverlay.classList.remove('show');
+}
+
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* 初始 */
+renderPlay();
+requestAnimationFrame(()=>{
+  initialView();
+  setTimeout(()=>toast('双指缩放 · 拖拽移动 · 点击人物查看信息'), 700);
+});
+window.addEventListener('resize', ()=>{ applyView(); });
+
+</script>
+</body>
+</html>
