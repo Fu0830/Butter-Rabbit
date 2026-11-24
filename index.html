@@ -50,7 +50,9 @@ img{-webkit-user-drag:none;user-select:none}
 .val.pink{color:#f0366e;text-shadow:0 1px 0 #fff,0 0 6px rgba(255,255,255,.7)}
 .val.money{color:#1c7a3a;text-shadow:0 1px 0 #fff}
 .val.date{color:#33445e;font-size:15px}
-.badge-ic{position:absolute;left:-6px;top:50%;transform:translateY(-50%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.18))}
+.badge-ic{position:relative;z-index:2;flex:none;margin-right:-9px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.18))}
+.badge-ic svg{width:27px;height:auto}
+.stat-row{display:flex;align-items:center;justify-content:center}
 .rate{position:absolute;left:50%;transform:translateX(-50%);top:-20px;font-size:14px;font-weight:800;
   color:#1f8f2a;white-space:nowrap;text-shadow:0 1px 0 #fff}
 .gain{font-weight:800;font-size:13px;letter-spacing:.2px}
@@ -175,8 +177,7 @@ img{-webkit-user-drag:none;user-select:none}
 .bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:8px;
   background:linear-gradient(180deg,#7ed24a,#4aab22);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 .bar .fill.orange{background:linear-gradient(180deg,#ffbb52,#f59b18)}
-.bar .num{position:absolute;right:6px;top:0;line-height:15px;font-size:12.5px;font-weight:700;color:#fff;
-  text-shadow:0 1px 1px rgba(0,0,0,.18)}
+.bar .num{position:absolute;right:6px;top:0;line-height:15px;font-size:12.5px;font-weight:800;color:#2b2b33;text-shadow:0 1px 0 rgba(255,255,255,.9)}
 
 .divider{height:1px;background:#f0f1f4;margin:14px 0 12px}
 .bottom-grid{display:grid;grid-template-columns:1fr 1.15fr;gap:8px}
@@ -246,8 +247,8 @@ input.text:focus{border-color:#2f8be8}
 
       <div class="stat" style="flex-direction:column;align-items:stretch">
         <div class="rate" id="stat-rate">+31.25K/s</div>
-        <span class="badge-ic"><svg width="36" height="29" viewBox="0 0 44 32"><defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fd44a"/><stop offset="1" stop-color="#2f8f2a"/></linearGradient><linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6cc23d"/><stop offset="1" stop-color="#267a22"/></linearGradient></defs><rect x="8" y="4" width="30" height="22" rx="4" fill="url(#bg2)" transform="translate(2,3)"/><rect x="8" y="4" width="30" height="22" rx="4" fill="url(#bg1)"/><rect x="8" y="14" width="30" height="5" fill="#ffc93c" opacity=".95"/><circle cx="23" cy="15" r="7" fill="#fff" opacity=".92"/><path d="M20 12.4h6M23 12.4v5.4M20.4 16h5.2" stroke="#2f8f2a" stroke-width="1.3"/></svg></span>
-        <div class="pill" style="padding-left:16px"><span class="val money" id="stat-money">29.63M</span></div>
+        <div class="stat-row"><span class="badge-ic"><svg width="36" height="29" viewBox="0 0 44 32"><defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fd44a"/><stop offset="1" stop-color="#2f8f2a"/></linearGradient><linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6cc23d"/><stop offset="1" stop-color="#267a22"/></linearGradient></defs><rect x="8" y="4" width="30" height="22" rx="4" fill="url(#bg2)" transform="translate(2,3)"/><rect x="8" y="4" width="30" height="22" rx="4" fill="url(#bg1)"/><rect x="8" y="14" width="30" height="5" fill="#ffc93c" opacity=".95"/><circle cx="23" cy="15" r="7" fill="#fff" opacity=".92"/><path d="M20 12.4h6M23 12.4v5.4M20.4 16h5.2" stroke="#2f8f2a" stroke-width="1.3"/></svg></span>
+        <div class="pill" style="padding-left:16px"><span class="val money" id="stat-money">29.63M</span></div></div>
       </div>
 
       <div class="stat">
